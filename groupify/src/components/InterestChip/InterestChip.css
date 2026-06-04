@@ -1,0 +1,51 @@
+.interest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-default);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: all 0.25s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.interest-chip:active {
+  transform: scale(0.95);
+}
+
+.interest-chip.selected {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--primary);
+  color: var(--primary-light);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.interest-chip.small {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  gap: 4px;
+}
+
+.chip-emoji {
+  font-size: 1.1em;
+}
+
+.interest-chip.small .chip-emoji {
+  font-size: 0.95em;
+}
+
+.chip-label {
+  line-height: 1;
+}
+
+.chip-check {
+  font-size: 0.75em;
+  color: var(--accent);
+  font-weight: 700;
+}

@@ -1,0 +1,63 @@
+.signup-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.signup-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+.signup-orb-1 {
+  width: 260px;
+  height: 260px;
+  background: rgba(168, 85, 247, 0.2);
+  top: -40px;
+  left: -60px;
+  animation: breathe 5s ease-in-out infinite;
+}
+
+.signup-orb-2 {
+  width: 180px;
+  height: 180px;
+  background: rgba(6, 214, 160, 0.12);
+  bottom: 40px;
+  right: -40px;
+  animation: breathe 4s ease-in-out infinite 1s;
+}
+
+.signup-content {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+.signup-header {
+  text-align: center;
+  margin-bottom: var(--space-3xl);
+}
+
+.signup-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-xs);
+}
+
+.signup-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
