@@ -17,7 +17,7 @@ _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
 _MODEL = "gemini-2.5-flash"
 
 
-async def analyze_query(query: str, user_profile: dict) -> dict:
+async def analyze_query(query: str, user_profile: dict, projects: list[dict] | None = None) -> dict:
     """
     Touchpoint 2: Convert a natural language teammate search query
     into structured search parameters using Gemini.
@@ -33,13 +33,19 @@ async def analyze_query(query: str, user_profile: dict) -> dict:
     skills = user_profile.get("skills", {}).get("technical", [])
     prefs = user_profile.get("preferences", {})
 
+    project_context = "Not specified"
+    if projects:
+        project_context = "; ".join([f"{p.get('title', '')} ({p.get('description', '')})" for p in projects])
+    elif prefs.get('project_idea'):
+        project_context = prefs['project_idea']
+
     prompt = f"""You are a hackathon team formation agent.
 
 Current user profile:
 - Skills: {skills}
 - Role: {prefs.get('role_preference', 'Not specified')}
 - Interests: {prefs.get('hackathon_interests', [])}
-- Project idea: {prefs.get('project_idea', 'Not specified')}
+- Projects: {project_context}
 
 User's teammate search query: "{query}"
 
@@ -77,7 +83,7 @@ Return ONLY valid JSON, no markdown fences or explanations."""
         }
 
 
-async def analyze_team_gaps(user_profile: dict) -> dict:
+async def analyze_team_gaps(user_profile: dict, projects: list[dict] | None = None) -> dict:
     """
     Complete My Team mode: Analyze user's profile and identify
     missing roles and skills needed for a complete hackathon team.
@@ -92,13 +98,19 @@ async def analyze_team_gaps(user_profile: dict) -> dict:
     skills = user_profile.get("skills", {}).get("technical", [])
     prefs = user_profile.get("preferences", {})
 
+    project_context = "Not specified"
+    if projects:
+        project_context = "; ".join([f"{p.get('title', '')} ({p.get('description', '')})" for p in projects])
+    elif prefs.get('project_idea'):
+        project_context = prefs['project_idea']
+
     prompt = f"""You are a hackathon team formation agent.
 
 Current user profile:
 - Skills: {skills}
 - Role: {prefs.get('role_preference', 'Not specified')}
 - Interests: {prefs.get('hackathon_interests', [])}
-- Project idea: {prefs.get('project_idea', 'Not specified')}
+- Projects: {project_context}
 
 Analyze what roles and skills are MISSING to form a complete 3-4 person hackathon team.
 
@@ -133,7 +145,7 @@ Return ONLY valid JSON, no markdown fences or explanations."""
         }
 
 
-async def score_and_explain(requester: dict, candidates: list[dict]) -> list[dict]:
+async def score_and_explain(requester: dict, candidates: list[dict], projects: list[dict] | None = None) -> list[dict]:
     """
     Touchpoint 3: Score each candidate for compatibility with the
     requester and generate human-readable explanations.
@@ -160,13 +172,19 @@ async def score_and_explain(requester: dict, candidates: list[dict]) -> list[dic
 
     candidates_text = "\n\n".join(candidate_summaries)
 
+    project_context = "Not specified"
+    if projects:
+        project_context = "; ".join([f"{p.get('title', '')} ({p.get('description', '')})" for p in projects])
+    elif req_prefs.get('project_idea'):
+        project_context = req_prefs['project_idea']
+
     prompt = f"""You are a hackathon team matching AI.
 
 REQUESTER:
 - Skills: {req_skills}
 - Role: {req_prefs.get('role_preference', 'Not specified')}
 - Interests: {req_prefs.get('hackathon_interests', [])}
-- Project idea: {req_prefs.get('project_idea', 'Not specified')}
+- Projects: {project_context}
 
 CANDIDATES:
 {candidates_text}

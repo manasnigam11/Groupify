@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.database import get_database
-from app.services.matching_engine import run_standard_match, run_complete_my_team
+from app.services.matching_engine import run_standard_match, run_complete_my_team, run_find_a_person
 from app.utils import get_current_user_id
 
 router = APIRouter(prefix="/api/match", tags=["matching"])
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/match", tags=["matching"])
 
 class FindRequest(BaseModel):
     query: str = ""
-    mode: str = "standard"  # "standard" or "complete_my_team"
+    mode: str = "standard"  # "standard", "complete_my_team", or "find_a_person"
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +42,7 @@ async def find_teammates(
         "Find me a frontend developer who knows React and Figma"
       - "complete_my_team": AI analyzes your profile and finds
         teammates that fill the gaps in your team
+      - "find_a_person": Look up a specific user directly by their email address
     """
     db = get_database()
 
@@ -63,6 +64,13 @@ async def find_teammates(
 
     if body.mode == "complete_my_team":
         result = await run_complete_my_team(user_id, user_doc)
+    elif body.mode == "find_a_person":
+        if not body.query.strip() or "@" not in body.query:
+             raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please provide a valid email address to search for a specific person.",
+            )
+        result = await run_find_a_person(body.query, user_id, user_doc)
     else:
         if not body.query.strip():
             raise HTTPException(

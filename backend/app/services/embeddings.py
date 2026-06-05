@@ -16,7 +16,7 @@ _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
 _EMBEDDING_MODEL = "gemini-embedding-001"
 
 
-def _build_profile_text(user: dict) -> str:
+def _build_profile_text(user: dict, projects: list[dict] | None = None) -> str:
     """
     Compose a single text block from user profile fields
     for embedding generation. The structure is designed to
@@ -40,9 +40,16 @@ def _build_profile_text(user: dict) -> str:
     if interests:
         parts.append(f"Interests: {', '.join(interests)}")
 
-    idea = prefs.get("project_idea", "")
-    if idea:
-        parts.append(f"Project Idea: {idea}")
+    # Include project data if available
+    if projects:
+        project_texts = []
+        for p in projects:
+            project_texts.append(f"{p.get('title', '')} — {p.get('description', '')}")
+        if project_texts:
+            parts.append(f"Projects: {'; '.join(project_texts)}")
+    elif prefs.get('project_idea'):
+        # Backward compat with legacy data
+        parts.append(f"Project Idea: {prefs['project_idea']}")
 
     bio = profile.get("bio", "")
     if bio:
@@ -51,11 +58,11 @@ def _build_profile_text(user: dict) -> str:
     return "\n".join(parts) if parts else "Hackathon participant"
 
 
-async def generate_embedding(user: dict) -> list[float]:
+async def generate_embedding(user: dict, projects: list[dict] | None = None) -> list[float]:
     """
     Generate an embedding vector from user profile text.
     """
-    profile_text = _build_profile_text(user)
+    profile_text = _build_profile_text(user, projects)
 
     result = _client.models.embed_content(
         model=_EMBEDDING_MODEL,

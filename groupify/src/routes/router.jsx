@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
-import SplashScreen from '../pages/SplashScreen/SplashScreen';
+import LandingPage from '../pages/LandingPage/LandingPage'; 
 import LoginScreen from '../pages/LoginScreen/LoginScreen';
 import SignupScreen from '../pages/SignupScreen/SignupScreen';
 import OnboardingFlow from '../pages/OnboardingFlow/OnboardingFlow';
@@ -12,7 +12,7 @@ import ProfileScreen from '../pages/ProfileScreen/ProfileScreen';
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <SplashScreen />,
+    element: <LandingPage />, 
   },
   {
     path: '/login',

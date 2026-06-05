@@ -36,6 +36,12 @@ async def connect_to_mongodb() -> None:
 
     # Verify connectivity with a quick server ping
     await _client.admin.command("ping")
+    
+    # Create indexes for projects collection
+    await _db.projects.create_index("user_id")
+    await _db.projects.create_index("required_skills")
+    await _db.projects.create_index("status")
+    
     print(f"[OK] Connected to MongoDB Atlas - database: {MONGODB_DB_NAME}")
 
 

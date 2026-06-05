@@ -1,1 +1,1 @@
-# Groupify Backend Routes
+# Route package — individual routers are imported directly by main.py.

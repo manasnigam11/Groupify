@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
-import './OnboardingFlow.css';
+import './EditProfile.css';
 
 const ROLE_OPTIONS = [
   'Frontend Developer', 'Backend Developer', 'Full-Stack Developer',
@@ -28,40 +28,38 @@ const INTEREST_OPTIONS = [
   'IoT', 'AR/VR', 'E-Commerce', 'Open Source', 'Accessibility',
 ];
 
-export default function OnboardingFlow() {
+export default function EditProfile() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  const [step, setStep] = useState(1);
+  
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // Step 1 — Required
+  // Required Profile Info
   const [name, setName] = useState('');
   const [rolePreference, setRolePreference] = useState('');
-
-  // Step 2 — Required
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [interests, setInterests] = useState([]);
 
-  // Step 3 — Optional
+  // Optional Profile Info
   const [university, setUniversity] = useState('');
   const [year, setYear] = useState('');
   const [bio, setBio] = useState('');
   const [github, setGithub] = useState('');
   const [linkedin, setLinkedin] = useState('');
 
-  // Pre-fill data when component loads
   useEffect(() => {
     if (user) {
-      setName(user.profile?.name || '');
-      setRolePreference(user.preferences?.role_preference || '');
-      setSelectedSkills(user.skills?.technical || []);
-      setInterests(user.preferences?.hackathon_interests || []);
-      setUniversity(user.profile?.university || '');
-      setYear(user.profile?.year || '');
-      setBio(user.profile?.bio || '');
-      setGithub(user.profile?.github_url || '');
-      setLinkedin(user.profile?.linkedin_url || '');
+      setName(user.profile.name || '');
+      setRolePreference(user.preferences.role_preference || '');
+      setSelectedSkills(user.skills.technical || []);
+      setInterests(user.preferences.hackathon_interests || []);
+      setUniversity(user.profile.university || '');
+      setYear(user.profile.year || '');
+      setBio(user.profile.bio || '');
+      setGithub(user.profile.github_url || '');
+      setLinkedin(user.profile.linkedin_url || '');
     }
   }, [user]);
 
@@ -73,17 +71,14 @@ export default function OnboardingFlow() {
     }
   }
 
-  // FIXED: Ensure name exists and is not just spaces
-  function canProceedStep1() {
-    return name && name.trim() !== '' && rolePreference !== '';
+  function canSave() {
+    return name.trim() && rolePreference && selectedSkills.length > 0 && interests.length > 0;
   }
 
-  function canProceedStep2() {
-    return selectedSkills.length >= 1 && interests.length >= 1;
-  }
-
-  async function handleFinish() {
+  async function handleSave(e) {
+    e.preventDefault();
     setError('');
+    setSuccess('');
     setSaving(true);
 
     try {
@@ -98,7 +93,7 @@ export default function OnboardingFlow() {
           bio,
           github_url: github,
           linkedin_url: linkedin,
-          avatar_url: user?.profile?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${name.replace(/\s/g, '')}`,
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${name.replace(/\s/g, '')}`,
         },
         skills: {
           technical: selectedSkills,
@@ -107,47 +102,38 @@ export default function OnboardingFlow() {
         preferences: {
           hackathon_interests: interests,
           role_preference: rolePreference,
-          looking_for_roles: [],
-          availability: 'full-time',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          looking_for_roles: user?.preferences?.looking_for_roles || [],
+          availability: user?.preferences?.availability || 'full-time',
+          timezone: user?.preferences?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       });
 
       await refreshUser();
-      navigate('/dashboard', { replace: true });
+      setSuccess('Profile updated successfully!');
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      setError(err.message || 'Failed to save profile.');
+      setError(err.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="onboarding-screen" id="onboarding-screen">
-      {/* Progress Bar */}
-      <div className="onboarding-progress">
-        <div
-          className="onboarding-progress-bar"
-          style={{ width: `${(step / 3) * 100}%` }}
-        />
-      </div>
+    <div className="edit-profile-screen">
+      <div className="edit-profile-container animate-fade-in-up">
+        <h1 className="edit-profile-title">Edit Profile</h1>
+        <p className="edit-profile-subtitle">Update your preferences and details</p>
 
-      <div className="onboarding-container">
-        {/* Step 1: Role & Name */}
-        {step === 1 && (
-          <div className="onboarding-step animate-fade-in-up" key="step1">
-            <div className="step-badge">Step 1 of 3</div>
-            
-            <h1 className="onboarding-title">
-              {name ? `Welcome, ${name.split(' ')[0]}!` : "Welcome to Groupify!"}
-            </h1>
-            <p className="onboarding-subtitle">Let's set up your profile. Confirm your name and select your role.</p>
+        {error && <div className="auth-error">{error}</div>}
+        {success && <div className="auth-success" style={{ color: '#10b981', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>{success}</div>}
 
-            {/* NAME FIELD RE-ADDED (PRE-FILLED) */}
+        <form onSubmit={handleSave} className="edit-profile-form">
+          <section className="form-section">
+            <h2>Basic Info</h2>
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-name">Your Name *</label>
+              <label className="form-label" htmlFor="ep-name">Your Name *</label>
               <input
-                id="ob-name"
+                id="ep-name"
                 type="text"
                 className="form-input"
                 placeholder="Alex Rivera"
@@ -157,7 +143,7 @@ export default function OnboardingFlow() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Your Primary Role *</label>
+              <label className="form-label">Your Role *</label>
               <div className="chip-grid">
                 {ROLE_OPTIONS.map((role) => (
                   <button
@@ -165,32 +151,16 @@ export default function OnboardingFlow() {
                     type="button"
                     className={`chip ${rolePreference === role ? 'chip-active' : ''}`}
                     onClick={() => setRolePreference(role)}
-                    id={`role-${role.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     {role}
                   </button>
                 ))}
               </div>
             </div>
+          </section>
 
-            <button
-              className="btn-primary"
-              disabled={!canProceedStep1()}
-              onClick={() => setStep(2)}
-              id="step1-next"
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Skills & Interests */}
-        {step === 2 && (
-          <div className="onboarding-step animate-fade-in-up" key="step2">
-            <div className="step-badge">Step 2 of 3</div>
-            <h1 className="onboarding-title">Your Skills</h1>
-            <p className="onboarding-subtitle">Select your tech skills and hackathon interests</p>
-
+          <section className="form-section">
+            <h2>Skills & Interests</h2>
             <div className="form-group">
               <label className="form-label">
                 Technical Skills * <span className="form-count">{selectedSkills.length} selected</span>
@@ -202,7 +172,6 @@ export default function OnboardingFlow() {
                     type="button"
                     className={`chip ${selectedSkills.includes(skill) ? 'chip-active' : ''}`}
                     onClick={() => toggleItem(selectedSkills, setSelectedSkills, skill)}
-                    id={`skill-${skill.toLowerCase().replace(/[\s\/\+\.]/g, '-')}`}
                   >
                     {skill}
                   </button>
@@ -221,41 +190,20 @@ export default function OnboardingFlow() {
                     type="button"
                     className={`chip ${interests.includes(interest) ? 'chip-active' : ''}`}
                     onClick={() => toggleItem(interests, setInterests, interest)}
-                    id={`interest-${interest.toLowerCase().replace(/[\s\/]/g, '-')}`}
                   >
                     {interest}
                   </button>
                 ))}
               </div>
             </div>
+          </section>
 
-            <div className="onboarding-actions">
-              <button className="btn-secondary" onClick={() => setStep(1)} id="step2-back">Back</button>
-              <button
-                className="btn-primary"
-                disabled={!canProceedStep2()}
-                onClick={() => setStep(3)}
-                id="step2-next"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Optional Details */}
-        {step === 3 && (
-          <div className="onboarding-step animate-fade-in-up" key="step3">
-            <div className="step-badge">Step 3 of 3</div>
-            <h1 className="onboarding-title">Almost there!</h1>
-            <p className="onboarding-subtitle">These details are optional but help with matching</p>
-
-            {error && <div className="auth-error">{error}</div>}
-
+          <section className="form-section">
+            <h2>Optional Details</h2>
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-university">University</label>
+              <label className="form-label" htmlFor="ep-university">University</label>
               <input
-                id="ob-university"
+                id="ep-university"
                 type="text"
                 className="form-input"
                 placeholder="Stanford University"
@@ -265,9 +213,9 @@ export default function OnboardingFlow() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-year">Year</label>
+              <label className="form-label" htmlFor="ep-year">Year</label>
               <input
-                id="ob-year"
+                id="ep-year"
                 type="text"
                 className="form-input"
                 placeholder="Junior, Senior, Graduate..."
@@ -277,21 +225,21 @@ export default function OnboardingFlow() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-bio">Bio</label>
+              <label className="form-label" htmlFor="ep-bio">Bio</label>
               <textarea
-                id="ob-bio"
+                id="ep-bio"
                 className="form-input form-textarea"
                 placeholder="A quick intro about yourself..."
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                rows={2}
+                rows={3}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-github">GitHub URL</label>
+              <label className="form-label" htmlFor="ep-github">GitHub URL</label>
               <input
-                id="ob-github"
+                id="ep-github"
                 type="url"
                 className="form-input"
                 placeholder="https://github.com/username"
@@ -301,9 +249,9 @@ export default function OnboardingFlow() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="ob-linkedin">LinkedIn URL</label>
+              <label className="form-label" htmlFor="ep-linkedin">LinkedIn URL</label>
               <input
-                id="ob-linkedin"
+                id="ep-linkedin"
                 type="url"
                 className="form-input"
                 placeholder="https://linkedin.com/in/username"
@@ -311,20 +259,25 @@ export default function OnboardingFlow() {
                 onChange={(e) => setLinkedin(e.target.value)}
               />
             </div>
+          </section>
 
-            <div className="onboarding-actions">
-              <button className="btn-secondary" onClick={() => setStep(2)} id="step3-back">Back</button>
-              <button
-                className="btn-primary"
-                onClick={handleFinish}
-                disabled={saving}
-                id="step3-finish"
-              >
-                {saving ? 'Saving...' : 'Complete Setup'}
-              </button>
-            </div>
+          <div className="edit-profile-actions">
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => navigate('/dashboard')}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={!canSave() || saving}
+            >
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
           </div>
-        )}
+        </form>
       </div>
     </div>
   );

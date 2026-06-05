@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext'; // <--- IMPORT ZAROORI HAI
 import AppLayout from './layouts/AppLayout';
+import LandingPage from './pages/LandingPage/LandingPage';
 import SplashScreen from './pages/SplashScreen/SplashScreen';
 import LoginScreen from './pages/LoginScreen/LoginScreen';
 import SignupScreen from './pages/SignupScreen/SignupScreen';
@@ -7,19 +9,38 @@ import OnboardingFlow from './pages/OnboardingFlow/OnboardingFlow';
 import Dashboard from './pages/Dashboard/Dashboard';
 import FindTeammates from './pages/FindTeammates/FindTeammates';
 import ProfileScreen from './pages/ProfileScreen/ProfileScreen';
+import EditProfile from './pages/EditProfile/EditProfile';
+import MyTeamScreen from './pages/MyTeamScreen/MyTeamScreen';
+import ChatsScreen from './pages/ChatsScreen/ChatsScreen';
+import CreateProject from './pages/CreateProject/CreateProject';
 
 export default function App() {
+  const { loading, user } = useAuth(); 
+
+  if (loading) {
+    return <div className="loading-screen">Loading Groupify...</div>;
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<SplashScreen />} />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/signup" element={<SignupScreen />} />
-      <Route path="/onboarding" element={<OnboardingFlow />} />
+      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginScreen />} />
+      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignupScreen />} />
+      <Route path="/onboarding" element={user ? <OnboardingFlow /> : <Navigate to="/login" replace />} />
+      <Route path="/splash" element={<SplashScreen />} />
+
       <Route element={<AppLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/find" element={<FindTeammates />} />
-        <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
+        <Route path="/find" element={user ? <FindTeammates /> : <Navigate to="/login" replace />} />
+        <Route path="/profile" element={user ? <ProfileScreen /> : <Navigate to="/login" replace />} />
+        <Route path="/profile/:userId" element={user ? <ProfileScreen /> : <Navigate to="/login" replace />} />
+        <Route path="/edit-profile" element={user ? <EditProfile /> : <Navigate to="/login" replace />} />
+        <Route path="/team" element={user ? <MyTeamScreen /> : <Navigate to="/login" replace />} />
+        <Route path="/projects/create" element={user ? <CreateProject /> : <Navigate to="/login" replace />} />
+        <Route path="/projects/:id/edit" element={user ? <CreateProject /> : <Navigate to="/login" replace />} />
+        <Route path="/chats" element={user ? <ChatsScreen /> : <Navigate to="/login" replace />} />
       </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -1,175 +1,186 @@
-/* ===== Shared Auth Styles (Login + Signup) ===== */
+/* LoginScreen.css - Complete & Unified */
 
-.auth-screen {
-  min-height: 100dvh;
+.auth-split-screen {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-xl);
-  background: var(--bg-primary);
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+}
+
+.auth-split-left {
+  display: none;
+  flex: 1;
+  background: linear-gradient(135deg, rgba(37, 38, 48, 0.9) 0%, rgba(15, 15, 20, 0.95) 100%), url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80');
+  background-size: cover;
+  background-position: center;
+  padding: 4rem;
+  flex-direction: column;
+  justify-content: space-between;
   position: relative;
   overflow: hidden;
 }
 
-.auth-screen::before {
-  content: '';
-  position: absolute;
-  top: -30%;
-  right: -30%;
-  width: 80%;
-  height: 80%;
-  background: radial-gradient(
-    circle,
-    rgba(124, 58, 237, 0.08) 0%,
-    transparent 60%
-  );
-  pointer-events: none;
+@media (min-width: 1024px) {
+  .auth-split-left { display: flex; }
+}
+
+.auth-brand-split {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #fff;
+}
+
+.auth-brand-name-split {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.auth-hero-content {
+  max-width: 480px;
+  z-index: 2;
+}
+
+.auth-hero-content h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  color: #fff;
+}
+
+.auth-hero-content p {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.auth-split-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .auth-split-right { max-width: 50%; }
 }
 
 .auth-container {
   width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-  position: relative;
-  z-index: 1;
+  max-width: 440px;
 }
 
 .auth-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.auth-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-}
-
-.auth-brand-name {
-  font-size: 1.3rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin-bottom: 2rem;
+  text-align: center;
 }
 
 .auth-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #fff;
 }
 
 .auth-subtitle {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  color: var(--text-muted);
 }
-
-/* Form */
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.auth-error {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: var(--error);
-  padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 500;
+  gap: 1.25rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0.5rem;
 }
 
 .form-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: 500;
 }
 
 .form-input {
   width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--bg-input);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  box-sizing: border-box;
   font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
 }
-
-.form-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.form-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-glow);
-}
-
-/* Primary Button */
 
 .btn-primary {
   width: 100%;
-  padding: var(--space-md) var(--space-xl);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  padding: 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 8px;
+  min-height: 48px;
+  background-color: var(--primary);
   color: white;
-  font-size: 1rem;
-  font-weight: 700;
-  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
-  letter-spacing: -0.01em;
+  transition: opacity 0.2s;
+  margin-top: 0.5rem;
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-glow);
+.auth-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Links */
 
 .auth-switch {
+  margin-top: 2rem;
   text-align: center;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  font-size: 0.95rem;
 }
 
 .auth-link {
   color: var(--primary-light);
-  font-weight: 600;
-  transition: color 0.2s;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-.auth-link:hover {
-  color: var(--primary);
+.auth-social {
+  margin-bottom: 1.5rem;
+  width: 100%;
 }
 
+.google-btn-wrapper {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+}

@@ -8,3 +8,4 @@ python-jose[cryptography]==3.4.0
 pydantic[email]==2.11.4
 python-multipart==0.0.20
 google-genai>=2.7.0
+google-auth>=2.38.0

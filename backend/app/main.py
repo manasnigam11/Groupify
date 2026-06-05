@@ -11,9 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import close_mongodb_connection, connect_to_mongodb
-from app.routes.auth import router as auth_router
-from app.routes.match import router as match_router
-from app.routes.profile import router as profile_router
+from app.routes import auth, profile, match, chats, projects, invites
 
 
 # ---------------------------------------------------------------------------
@@ -46,14 +44,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -63,9 +55,12 @@ app.add_middleware(
 # Route Registration
 # ---------------------------------------------------------------------------
 
-app.include_router(auth_router)
-app.include_router(profile_router)
-app.include_router(match_router)
+app.include_router(auth.router)
+app.include_router(profile.router)
+app.include_router(match.router)
+app.include_router(chats.router)
+app.include_router(projects.router)
+app.include_router(invites.router)
 
 
 # ---------------------------------------------------------------------------

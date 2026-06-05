@@ -19,6 +19,7 @@ from app.models import (
     UserSkills,
 )
 from app.services.embeddings import generate_embedding
+from app.services.gemini import score_and_explain
 from app.utils import get_current_user_id
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -54,6 +55,83 @@ async def get_profile(user_id: str = Depends(get_current_user_id)):
         created_at=user.get("created_at", datetime.now(timezone.utc)),
         updated_at=user.get("updated_at", datetime.now(timezone.utc)),
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/profile/{user_id}
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{target_user_id}",
+    response_model=UserResponse,
+    summary="Get another user's public profile",
+)
+async def get_public_profile(target_user_id: str, user_id: str = Depends(get_current_user_id)):
+    """Return another user's public profile."""
+    db = get_database()
+    
+    try:
+        tuid = ObjectId(target_user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+
+    user = await db.users.find_one({"_id": tuid})
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    return UserResponse(
+        id=str(user["_id"]),
+        email=user["email"], # Maybe hide email in a real app, but ok for MVP
+        profile=UserProfile(**user.get("profile", {})),
+        skills=UserSkills(**user.get("skills", {})),
+        preferences=UserPreferences(**user.get("preferences", {})),
+        is_looking=user.get("is_looking", True),
+        created_at=user.get("created_at", datetime.now(timezone.utc)),
+        updated_at=user.get("updated_at", datetime.now(timezone.utc)),
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/profile/{user_id}/compatibility
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{target_user_id}/compatibility",
+    summary="Get dynamic compatibility explanation",
+)
+async def get_compatibility(target_user_id: str, user_id: str = Depends(get_current_user_id)):
+    """Dynamically compute why we matched."""
+    db = get_database()
+    
+    try:
+        uid = ObjectId(user_id)
+        tuid = ObjectId(target_user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+    if uid == tuid:
+        return {"compatibility_score": 100, "reasoning": "This is your own profile.", "skill_overlap": [], "skill_complement": []}
+        
+    me = await db.users.find_one({"_id": uid})
+    target = await db.users.find_one({"_id": tuid})
+    
+    if not me or not target:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # We can use the existing Gemini score_and_explain function
+    # It takes (user_doc, list_of_candidates)
+    # We must pass target as a dictionary with _id as string
+    target_copy = dict(target)
+    target_copy["_id"] = str(target_copy["_id"])
+    
+    results = await score_and_explain(me, [target_copy])
+    if results and len(results) > 0:
+        return results[0]
+        
+    return {"compatibility_score": 50, "reasoning": "Unable to compute compatibility at this time.", "skill_overlap": [], "skill_complement": []}
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +185,8 @@ async def update_profile(
     if body.skills is not None or body.preferences is not None:
         try:
             updated_doc = await db.users.find_one({"_id": ObjectId(user_id)})
-            embedding = await generate_embedding(updated_doc)
+            projects = await db.projects.find({"user_id": ObjectId(user_id)}).to_list(10)
+            embedding = await generate_embedding(updated_doc, projects)
             await db.users.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$set": {"embedding": embedding}},

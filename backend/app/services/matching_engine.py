@@ -7,9 +7,10 @@ Core teammate matching pipeline that combines:
   3. Standard MongoDB query matching (fallback)
   4. Gemini compatibility scoring & explanations
 
-Supports two modes:
+Supports three modes:
   - "standard": User provides a natural language query
   - "complete_my_team": AI analyzes gaps and searches for each missing role
+  - "find_a_person": Direct database lookup by exact email address
 """
 
 from datetime import datetime, timezone
@@ -68,11 +69,6 @@ async def _vector_search(
 
     try:
         results = await db.users.aggregate(pipeline).to_list(limit)
-        print(f"[VECTOR SEARCH] ✅ Atlas Vector Search returned {len(results)} candidates using index 'user_embedding_index'")
-        for r in results:
-            vs = r.get('vector_score', 'N/A')
-            name = r.get('profile', {}).get('name', 'Unknown')
-            print(f"  → {name} (vector_score={vs})")
         return results
     except Exception as e:
         print(f"[VECTOR SEARCH] ❌ Atlas Vector Search FAILED: {e}")
@@ -145,23 +141,15 @@ async def run_standard_match(
 ) -> dict:
     """
     Full matching pipeline for a natural language teammate search.
-
-    Steps:
-      1. Gemini analyzes the query → structured filters
-      2. Generate embedding from the optimized search text
-      3. Try Atlas Vector Search (primary)
-      4. Fall back to standard MongoDB query if needed
-      5. Gemini scores and explains top candidates
-      6. Save match request to history
     """
     db = get_database()
     fallback_triggered = False
 
     # Step 1: Analyze query with Gemini
     try:
-        analysis = await analyze_query(query, user_doc)
+        user_projects = await db.projects.find({"user_id": ObjectId(user_id)}).to_list(10)
+        analysis = await analyze_query(query, user_doc, projects=user_projects)
     except Exception as e:
-        print(f"[WARN] Gemini query analysis failed: {e}")
         analysis = {
             "required_skills": [],
             "preferred_roles": [],
@@ -174,36 +162,27 @@ async def run_standard_match(
     try:
         query_embedding = await generate_query_embedding(search_text)
     except Exception as e:
-        print(f"[WARN] Query embedding failed: {e}")
         query_embedding = None
 
     # Step 3: Try Vector Search
     candidates = []
     if query_embedding:
-        print(f"[PIPELINE] Step 3: Running Atlas Vector Search with {len(query_embedding)}-dim embedding...")
         candidates = await _vector_search(query_embedding, user_id)
-    else:
-        print(f"[PIPELINE] Step 3: SKIPPED — No query embedding available")
 
     # Step 4: Fallback if Vector Search returns < 3 results
     if len(candidates) < 3:
         fallback_triggered = True
-        print(f"[PIPELINE] Step 4: FALLBACK TRIGGERED — Vector Search returned {len(candidates)} (< 3 threshold)")
         fallback_results = await _fallback_search(
             required_skills=analysis.get("required_skills", []),
             preferred_roles=analysis.get("preferred_roles", []),
             interests=user_doc.get("preferences", {}).get("hackathon_interests", []),
             exclude_user_id=user_id,
         )
-        print(f"[FALLBACK] Returned {len(fallback_results)} results")
-        # Merge without duplicates
         existing_ids = {str(c["_id"]) for c in candidates}
         for r in fallback_results:
             if str(r["_id"]) not in existing_ids:
                 candidates.append(r)
                 existing_ids.add(str(r["_id"]))
-    else:
-        print(f"[PIPELINE] Step 4: Fallback NOT triggered — Vector Search returned {len(candidates)} candidates (≥ 3)")
 
     # Limit to top 8 for Gemini scoring
     candidates = candidates[:8]
@@ -212,12 +191,10 @@ async def run_standard_match(
     scored_results = []
     if candidates:
         try:
-            # Convert ObjectId to string for Gemini
             for c in candidates:
                 c["_id"] = str(c["_id"])
-            scored_results = await score_and_explain(user_doc, candidates)
+            scored_results = await score_and_explain(user_doc, candidates, projects=user_projects)
         except Exception as e:
-            print(f"[WARN] Gemini scoring failed: {e}")
             scored_results = [
                 {
                     "user_id": str(c["_id"]),
@@ -228,6 +205,13 @@ async def run_standard_match(
                 }
                 for c in candidates
             ]
+            
+    # Inject Name and Role into Results
+    candidate_dict = {str(c["_id"]): c for c in candidates}
+    for res in scored_results:
+        c = candidate_dict.get(res["user_id"], {})
+        res["name"] = c.get("profile", {}).get("name", "Unknown User")
+        res["role"] = c.get("preferences", {}).get("role_preference", "Teammate")
 
     # Take top 5
     scored_results = scored_results[:5]
@@ -262,23 +246,13 @@ async def run_complete_my_team(
     user_id: str,
     user_doc: dict,
 ) -> dict:
-    """
-    AI-driven team completion pipeline.
-
-    Steps:
-      1. Gemini analyzes the user's profile to identify missing roles/skills
-      2. For each missing role, search for matching candidates
-      3. Score and explain each candidate
-      4. Group results by the role they fill
-    """
     db = get_database()
     fallback_triggered = False
 
-    # Step 1: Analyze team gaps
     try:
-        gaps = await analyze_team_gaps(user_doc)
+        user_projects = await db.projects.find({"user_id": ObjectId(user_id)}).to_list(10)
+        gaps = await analyze_team_gaps(user_doc, projects=user_projects)
     except Exception as e:
-        print(f"[WARN] Team gap analysis failed: {e}")
         gaps = {
             "missing_roles": ["Frontend Developer", "UI/UX Designer"],
             "missing_skills": ["React", "Figma"],
@@ -289,11 +263,8 @@ async def run_complete_my_team(
     missing_skills = gaps.get("missing_skills", [])
     all_results = []
 
-    # Step 2: Search for each missing role
     for role in missing_roles:
         search_text = f"{role} with skills in {', '.join(missing_skills)}"
-
-        # Try vector search first
         candidates = []
         try:
             embedding = await generate_query_embedding(search_text)
@@ -301,7 +272,6 @@ async def run_complete_my_team(
         except Exception:
             pass
 
-        # Fallback
         if len(candidates) < 2:
             fallback_triggered = True
             fb = await _fallback_search(
@@ -318,23 +288,26 @@ async def run_complete_my_team(
 
         candidates = candidates[:4]
 
-        # Score candidates
         if candidates:
             try:
                 for c in candidates:
                     c["_id"] = str(c["_id"])
-                scored = await score_and_explain(user_doc, candidates)
-                # Tag each result with the role it fills
+                scored = await score_and_explain(user_doc, candidates, projects=user_projects)
+                
+                # Inject Name and Role
+                cand_map = {str(c["_id"]): c for c in candidates}
                 for s in scored:
                     s["matched_for_role"] = role
-                all_results.extend(scored[:2])  # Top 2 per role
+                    c_data = cand_map.get(s["user_id"], {})
+                    s["name"] = c_data.get("profile", {}).get("name", "Unknown User")
+                    s["role"] = c_data.get("preferences", {}).get("role_preference", "Teammate")
+                    
+                all_results.extend(scored[:2])
             except Exception:
                 pass
 
-    # Sort all results by score
     all_results.sort(key=lambda x: x.get("compatibility_score", 0), reverse=True)
 
-    # Save to match_requests
     match_doc = {
         "user_id": ObjectId(user_id),
         "created_at": datetime.now(timezone.utc),
@@ -356,5 +329,75 @@ async def run_complete_my_team(
         "mode": "complete_my_team",
         "results": all_results,
         "fallback_triggered": fallback_triggered,
+        "created_at": match_doc["created_at"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Core Matching Pipeline — Find a Person Mode (By Email)
+# ---------------------------------------------------------------------------
+
+async def run_find_a_person(
+    email_query: str,
+    user_id: str,
+    user_doc: dict,
+) -> dict:
+    db = get_database()
+    email_query = email_query.strip().lower()
+
+    candidate = await db.users.find_one({
+        "email": email_query,
+        "_id": {"$ne": ObjectId(user_id)}
+    }, {"password_hash": 0})
+
+    scored_results = []
+    
+    if candidate:
+        candidate["_id"] = str(candidate["_id"])
+        try:
+            user_projects = await db.projects.find({"user_id": ObjectId(user_id)}).to_list(10)
+            scored_results = await score_and_explain(user_doc, [candidate], projects=user_projects)
+            
+            if scored_results:
+                scored_results[0]["matched_for_role"] = "Direct Invite"
+                if scored_results[0].get("compatibility_score", 0) < 80:
+                     scored_results[0]["compatibility_score"] = 85 
+                     
+                # Inject Name and Role
+                scored_results[0]["name"] = candidate.get("profile", {}).get("name", "Unknown User")
+                scored_results[0]["role"] = candidate.get("preferences", {}).get("role_preference", "Teammate")
+                
+        except Exception as e:
+            scored_results = [{
+                "user_id": candidate["_id"],
+                "compatibility_score": 90, 
+                "reasoning": "This user was found directly via their email address.",
+                "skill_overlap": [],
+                "skill_complement": candidate.get("skills", {}).get("technical", [])[:3],
+                "matched_for_role": "Direct Invite",
+                "name": candidate.get("profile", {}).get("name", "Unknown User"),
+                "role": candidate.get("preferences", {}).get("role_preference", "Teammate")
+            }]
+
+    match_doc = {
+        "user_id": ObjectId(user_id),
+        "created_at": datetime.now(timezone.utc),
+        "query": f"Email Lookup: {email_query}",
+        "mode": "find_a_person",
+        "analysis": {
+            "search_query_text": email_query,
+            "reasoning": "Direct email lookup.",
+        },
+        "results": scored_results,
+        "fallback_triggered": False,
+    }
+    result = await db.match_requests.insert_one(match_doc)
+
+    return {
+        "match_id": str(result.inserted_id),
+        "query": email_query,
+        "mode": "find_a_person",
+        "results": scored_results,
+        "fallback_triggered": False,
         "created_at": match_doc["created_at"],
     }
