@@ -12,10 +12,8 @@ env/
 .env
 .env.local
 
-# IDE
+# IDE & OS
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db

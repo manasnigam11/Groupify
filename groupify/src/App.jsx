@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext'; // <--- IMPORT ZAROORI HAI
+import { useAuth } from './context/AuthContext';
 import AppLayout from './layouts/AppLayout';
 import LandingPage from './pages/LandingPage/LandingPage';
 import SplashScreen from './pages/SplashScreen/SplashScreen';
@@ -15,20 +15,29 @@ import ChatsScreen from './pages/ChatsScreen/ChatsScreen';
 import CreateProject from './pages/CreateProject/CreateProject';
 
 export default function App() {
-  const { loading, user } = useAuth(); 
+  const { loading, user } = useAuth();
 
+  // Jab tak user verify ho raha hai, tab tak background me wait karega
   if (loading) {
-    return <div className="loading-screen">Loading Groupify...</div>;
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: 'var(--bg-dark)', color: 'white' }}>
+        <h2>Loading Groupify...</h2>
+      </div>
+    );
   }
 
   return (
     <Routes>
+      {/* Public Routes */}
       <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+      <Route path="/splash" element={<SplashScreen />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginScreen />} />
       <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignupScreen />} />
+      
+      {/* Onboarding */}
       <Route path="/onboarding" element={user ? <OnboardingFlow /> : <Navigate to="/login" replace />} />
-      <Route path="/splash" element={<SplashScreen />} />
 
+      {/* Protected Routes (AppLayout ke andar) */}
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
         <Route path="/find" element={user ? <FindTeammates /> : <Navigate to="/login" replace />} />
@@ -41,6 +50,7 @@ export default function App() {
         <Route path="/chats" element={user ? <ChatsScreen /> : <Navigate to="/login" replace />} />
       </Route>
 
+      {/* Catch-all: Agar route match na ho, toh homepage pe bhejo */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

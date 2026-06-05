@@ -2,14 +2,11 @@
 .env
 .env.local
 
-# IDE
+# Root dependencies (Do NOT ignore package.json and package-lock.json)
+node_modules/
+
+# IDE & OS
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
-
-node_modules/
-package-lock.json
-package.json
