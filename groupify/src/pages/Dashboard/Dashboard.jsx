@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
+import TeamHealthCard from '../../components/TeamHealthCard/TeamHealthCard';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -11,19 +12,46 @@ export default function Dashboard() {
   const [project, setProject] = useState(null);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // AI Recommendations aur Naya Invitation Status
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [invitedIds, setInvitedIds] = useState([]);
+  const [invitingId, setInvitingId] = useState(null);
 
-  // Mock Data for showcase (Replace with API calls when backend is ready)
-  const mockAiMatches = [
-    { id: '1', name: 'Aarav', role: 'UI/UX Designer', score: 92 },
-    { id: '2', name: 'Priya', role: 'Frontend Developer', score: 88 },
-    { id: '3', name: 'Rohan', role: 'AI Engineer', score: 85 }
-  ];
+// Asli Invitation Bhejne Wala Function (Real API)
+  const handleRecruit = async (matchId) => {
+    setInvitingId(matchId); 
+    try {
+      await api.sendTeamInvitation(project.id || project._id, matchId);
+      setInvitedIds(prev => [...prev, matchId]);
+    } catch (error) {
+      console.error("Failed to send invite:", error);
+    } finally {
+      setInvitingId(null); 
+    }
+  };
 
-  const mockActivityFeed = [
-    { id: 1, type: 'match', text: 'AI found 3 new highly compatible teammates', time: '2 hours ago' },
-    { id: 2, type: 'invite', text: 'You sent an invitation to Rahul', time: '5 hours ago' },
-    { id: 3, type: 'project', text: 'Updated project description for Smart India Hackathon', time: '1 day ago' }
-  ];
+  // Asli Backend se Smart Recommendations fetch karne wala function
+  // Asli Backend se Smart Recommendations fetch + Shuffle karne wala function
+  const generateSmartAiRecs = useCallback(async (projectData) => {
+    if (!projectData) return;
+    try {
+      const realRecommendations = await api.getAiRecommendations(projectData.id || projectData._id);
+      
+      // Agar backend se array aayi hai, toh usko randomly shuffle karo
+      if (realRecommendations && realRecommendations.length > 0) {
+        const shuffled = [...realRecommendations].sort(() => 0.5 - Math.random());
+        
+        // Shuffle hone ke baad sirf starting ke 3 logo ko UI par dikhao
+        setAiRecommendations(shuffled.slice(0, 3));
+      } else {
+        setAiRecommendations([]);
+      }
+      
+    } catch (error) {
+      console.error("Failed to fetch genuine AI recommendations:", error);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -35,6 +63,10 @@ export default function Dashboard() {
         ]);
         setProject(projData);
         setInvites(invitesData.received || []);
+        
+        if (projData) {
+          generateSmartAiRecs(projData);
+        }
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
       } finally {
@@ -42,7 +74,13 @@ export default function Dashboard() {
       }
     }
     fetchDashboardData();
-  }, [user]);
+  }, [user, generateSmartAiRecs]);
+
+  const handleProjectHealthUpdate = (newHealth) => {
+    const updatedProject = { ...project, team_health: newHealth };
+    setProject(updatedProject);
+    generateSmartAiRecs(updatedProject); 
+  };
 
   if (!user) return null;
   if (loading) return <div className="page-container" style={{padding: '2rem'}}>Loading Command Center...</div>;
@@ -50,35 +88,24 @@ export default function Dashboard() {
   const profile = user.profile || {};
   const firstName = profile.name?.split(' ')[0] || 'User';
   
-  // === SMART LOGIC FOR TEAM HEALTH ===
   const teamSize = project?.team_size || 4;
   const currentMembersList = project?.members || [];
   const currentMembersCount = currentMembersList.length || 1;
   const completionPercent = Math.round((currentMembersCount / teamSize) * 100);
 
-  // 1. Current team ke roles nikaalo
   const currentTeamRoles = currentMembersList.map(m => m.role?.toLowerCase().trim() || '');
-
-  // 2. Pata lagao actually missing roles kaunse hain
   const trulyMissingRoles = project?.required_roles?.filter(r => {
     const peopleWithRole = currentTeamRoles.filter(role => role === r.role?.toLowerCase().trim()).length;
     return peopleWithRole < (r.count || 1);
   }) || [];
 
-  // 3. Dynamic Health Score (Formula: 40 + completion + bonus if roles filled)
-  const healthScore = completionPercent === 100 ? 100 : Math.min(95, 40 + completionPercent + (trulyMissingRoles.length === 0 ? 15 : 0));
+  const mockActivityFeed = [
+    { id: 1, type: 'match', text: 'AI analyzed your team requirements', time: 'Just now' },
+    { id: 2, type: 'invite', text: 'You sent an invitation to Rahul', time: '5 hours ago' },
+    { id: 3, type: 'project', text: 'Updated project description', time: '1 day ago' }
+  ];
 
-  // 4. Smart Recommendation Text
-  let recommendationText = "Your team is perfectly balanced and ready for the hackathon!";
-  if (completionPercent < 100) {
-    if (trulyMissingRoles.length > 0) {
-      recommendationText = `"Adding a ${trulyMissingRoles[0].role} would significantly improve project coverage."`;
-    } else {
-      recommendationText = `"Roles are filled! You just need ${teamSize - currentMembersCount} more member(s) for a full squad."`;
-    }
-  }
-
-  return (
+return (
     <div className="page-container dashboard-cmd" id="dashboard-screen">
       
       {/* SECTION 1: HERO AREA */}
@@ -142,42 +169,16 @@ export default function Dashboard() {
         <div className="cmd-stat-card">
           <div className="stat-icon ai-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
           <div className="stat-data">
-            <h3>{mockAiMatches.length}</h3>
-            <p>AI Matches Found</p>
+            <h3>{project ? aiRecommendations.length : 0}</h3>
+            <p>AI Deficit Matches</p>
           </div>
         </div>
       </section>
 
       {/* SECTION 3: HEALTH & OVERVIEW */}
       <section className="cmd-split-section animate-fade-in-up stagger-2">
-        {/* AI Team Health */}
-        <div className="cmd-card ai-health-card">
-          <h2>AI Team Health</h2>
-          <div className="health-display">
-            <div className="health-circle">
-              <svg viewBox="0 0 36 36" className={`circular-chart ${healthScore >= 80 ? 'green' : 'orange'}`}>
-                <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path className="circle" strokeDasharray={`${healthScore}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div className="health-score">{healthScore}%</div>
-            </div>
-            <div className="health-details">
-              {completionPercent < 100 && trulyMissingRoles.length > 0 ? (
-                <>
-                  <p className="missing-title">Missing Core Roles:</p>
-                  <div className="missing-skills">
-                    {trulyMissingRoles.slice(0, 2).map(r => <span key={r.role} className="skill-chip-danger">{r.role}</span>)}
-                  </div>
-                  <p className="health-recommendation">{recommendationText}</p>
-                </>
-              ) : (
-                <p className="health-recommendation success">{recommendationText}</p>
-              )}
-            </div>
-          </div>
-        </div>
+        <TeamHealthCard project={project} onUpdate={handleProjectHealthUpdate} />
 
-        {/* Project Overview */}
         <div className="cmd-card project-overview-card">
           <h2>Project Readiness</h2>
           {project ? (
@@ -210,38 +211,72 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* SECTION 4: AI RECOMMENDED TEAMMATES */}
+      {/* SECTION 4: SMART AI DRIVEN RECOMMENDED TEAMMATES */}
       <section className="cmd-section animate-fade-in-up stagger-3">
         <div className="section-header">
-          <h2>AI Recommended Teammates</h2>
-          <button className="btn-text" onClick={() => navigate('/find')}>View All Matches →</button>
+          <h2>AI Team-Deficit Recommendations (Based on Skill Gaps)</h2>
+          {project && aiRecommendations.length > 0 && (
+            <button className="btn-text" onClick={() => generateSmartAiRecs(project)}>
+              ✨ Shuffle Recommendations
+            </button>
+          )}
         </div>
-        <div className="recommendations-grid">
-          {mockAiMatches.map(match => (
-            <div key={match.id} className="match-mini-card">
-              <div className="match-mini-header">
-                <div className="match-avatar"><img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${match.name}`} alt={match.name} /></div>
-                <div>
-                  <h4>{match.name}</h4>
-                  <p>{match.role}</p>
+        
+        {project ? (
+          aiRecommendations.length > 0 ? (
+            <div className="recommendations-grid">
+              {aiRecommendations.map(match => (
+                <div key={match.id} className="match-mini-card">
+                  <div className="match-mini-header">
+                    <div className="match-avatar"><img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${match.name}`} alt={match.name} /></div>
+                    <div>
+                      <h4>{match.name}</h4>
+                      <p style={{ color: 'var(--primary-light)', fontWeight: '600', fontSize: '0.85rem' }}>{match.role}</p>
+                    </div>
+                  </div>
+                  <div className="match-mini-score">
+                    <span className="score-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                      {match.score}% Gap Resolver
+                    </span>
+                  </div>
+                  <div className="match-mini-actions">
+                    <button className="btn-secondary btn-small" onClick={() => navigate('/find', { state: { filterRole: match.role } })}>
+                      View Matches
+                    </button>
+                    
+                    {/* DYNAMIC RECRUIT BUTTON LOGIC YAHAN LAGA HAI */}
+                    {invitedIds.includes(match.id) ? (
+                      <button className="btn-primary btn-small" disabled style={{ background: '#10b981', borderColor: '#10b981', color: 'white' }}>
+                        Invited ✅
+                      </button>
+                    ) : invitingId === match.id ? (
+                      <button className="btn-primary btn-small" disabled style={{ opacity: 0.7 }}>
+                        Sending...
+                      </button>
+                    ) : (
+                      <button className="btn-primary btn-small" onClick={() => handleRecruit(match.id)}>
+                        Recruit
+                      </button>
+                    )}
+                    
+                  </div>
                 </div>
-              </div>
-              <div className="match-mini-score">
-                <span className="score-badge">{match.score}% Match</span>
-              </div>
-              <div className="match-mini-actions">
-                <button className="btn-secondary btn-small" onClick={() => navigate(`/profile/${match.id}`)}>View Profile</button>
-                <button className="btn-primary btn-small" onClick={() => navigate(`/chats?userId=${match.id}`)}>Chat</button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="cmd-card" style={{ textAlign: 'center', padding: '2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Run AI Health analysis first to discover hidden talent requirements.</p>
+            </div>
+          )
+        ) : (
+          <div className="cmd-card" style={{ textAlign: 'center', padding: '2rem' }}>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Create a project first to activate AI Predictive matchmaking.</p>
+          </div>
+        )}
       </section>
 
       {/* SECTION 5 & 6: ACTIVITY & COMMUNICATIONS */}
       <section className="cmd-split-section animate-fade-in-up stagger-4">
-        
-        {/* Activity Feed */}
         <div className="cmd-card activity-card">
           <h2>Recent Activity</h2>
           <div className="timeline">
@@ -257,10 +292,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Invitations & Messages */}
         <div className="cmd-card comms-card">
           <h2>Invitations & Messages</h2>
-          
           <div className="comms-section">
             <h3>Pending Invites ({invites.length})</h3>
             {invites.length > 0 ? (
@@ -288,7 +321,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* SECTION 8: QUICK ACTIONS (Footer) */}
+      {/* SECTION 8: QUICK ACTIONS */}
       <section className="cmd-quick-actions animate-fade-in-up stagger-5">
         <button onClick={() => navigate('/profile')} className="quick-action-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>

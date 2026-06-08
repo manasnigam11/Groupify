@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import close_mongodb_connection, connect_to_mongodb
-from app.routes import auth, profile, match, chats, projects, invites
+from app.routes import auth, profile, match, chats, projects, invites, recommendations
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +61,7 @@ app.include_router(match.router)
 app.include_router(chats.router)
 app.include_router(projects.router)
 app.include_router(invites.router)
+app.include_router(recommendations.router)
 
 
 # ---------------------------------------------------------------------------
