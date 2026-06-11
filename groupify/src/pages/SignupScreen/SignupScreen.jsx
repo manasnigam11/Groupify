@@ -151,7 +151,7 @@ export default function SignupScreen() {
                     id="signup-email"
                     type="email"
                     className="form-input"
-                    placeholder="you@university.edu"
+                    placeholder="you@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

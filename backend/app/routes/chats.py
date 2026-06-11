@@ -1,12 +1,13 @@
 """
 Groupify — Chats Routes.
 
-GET  /api/chats            — Get list of conversations for current user.
+GET  /api/chats           — Get list of conversations for current user.
 GET  /api/chats/{user_id}   — Get message history with a specific user.
 POST /api/chats/{user_id}   — Send a direct message to a user.
 """
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -110,7 +111,7 @@ async def send_team_message(project_id: str, body: ChatMessageCreate, user_id: s
         "receiver_id": pid,
         "is_team_chat": True,
         "content": body.content,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(ZoneInfo("Asia/Kolkata"))
     }
     
     res = await db.chat_messages.insert_one(msg_doc)
@@ -175,7 +176,7 @@ async def send_message(other_user_id: str, body: ChatMessageCreate, user_id: str
         "receiver_id": ouid,
         "is_team_chat": False,
         "content": body.content,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(ZoneInfo("Asia/Kolkata"))
     }
     
     res = await db.chat_messages.insert_one(msg_doc)
