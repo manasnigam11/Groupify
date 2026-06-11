@@ -1,7 +1,9 @@
 /**
  * Groupify — API Service Layer.
  */
-const API_BASE = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+const API_BASE = import.meta.env.VITE_API_URL;
+
+console.log("Current API Backend URL:", API_BASE);
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('groupify_token');
