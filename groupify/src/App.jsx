@@ -26,13 +26,23 @@ export default function App() {
     );
   }
 
+  // NAYA LOGIC: Smart Redirect handler
+  const getRedirectPath = () => {
+    // Agar user logged in hai par uski technical skills khali hain, toh onboarding bhejo
+    if (user && (!user.skills?.technical || user.skills.technical.length === 0)) {
+      return "/onboarding";
+    }
+    // Varna direct dashboard bhejo
+    return "/dashboard";
+  };
+
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+      {/* Public Routes with Smart Redirect */}
+      <Route path="/" element={user ? <Navigate to={getRedirectPath()} replace /> : <LandingPage />} />
       <Route path="/splash" element={<SplashScreen />} />
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginScreen />} />
-      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignupScreen />} />
+      <Route path="/login" element={user ? <Navigate to={getRedirectPath()} replace /> : <LoginScreen />} />
+      <Route path="/signup" element={user ? <Navigate to={getRedirectPath()} replace /> : <SignupScreen />} />
       
       {/* Onboarding */}
       <Route path="/onboarding" element={user ? <OnboardingFlow /> : <Navigate to="/login" replace />} />

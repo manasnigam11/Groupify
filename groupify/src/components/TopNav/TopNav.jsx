@@ -1,11 +1,19 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import * as api from '../../services/api';
+import { useState } from 'react';
 import './TopNav.css';
 
 export default function TopNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, notifications } = useAuth();
+
+  // Modal control systems for Delete Account
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const hiddenPaths = ['/', '/login', '/signup', '/onboarding'];
   if (hiddenPaths.includes(location.pathname)) return null;
@@ -15,6 +23,27 @@ export default function TopNav() {
   function handleLogout() {
     logout();
     navigate('/login', { replace: true });
+  }
+
+  async function handleDeleteAccountSubmit(e) {
+    e.preventDefault();
+    if (!confirmEmail) return;
+
+    if (window.confirm("⚠️ DANGER ZONE: Are you 100% sure you want to permanently delete your account? This action is irreversible.")) {
+      setDeleteLoading(true);
+      setDeleteError('');
+      try {
+        await api.deleteUserAccount(confirmEmail);
+        setShowDeleteModal(false);
+        logout();
+        alert("Your Groupify account has been permanently purged.");
+        navigate('/login', { replace: true });
+      } catch (err) {
+        setDeleteError(err.message || "Failed to delete account. Please verify your email.");
+      } finally {
+        setDeleteLoading(false);
+      }
+    }
   }
 
   return (
@@ -56,7 +85,6 @@ export default function TopNav() {
             Find Teammates
           </NavLink>
           
-          {/* CHATS - Position relative set kiya hai yahan */}
           <NavLink
             to="/chats"
             className={({ isActive }) => `top-nav-link ${isActive ? 'active' : ''}`}
@@ -70,7 +98,6 @@ export default function TopNav() {
             {notifications.unreadChats && <span className="nav-badge"></span>}
           </NavLink>
           
-          {/* MY TEAM - Position relative set kiya hai yahan */}
           <NavLink
             to="/team"
             className={({ isActive }) => `top-nav-link ${isActive ? 'active' : ''}`}
@@ -100,10 +127,50 @@ export default function TopNav() {
           
           <div className="dropdown-menu">
             <NavLink to="/profile" className="dropdown-item">View Profile</NavLink>
-            <button onClick={handleLogout} className="dropdown-item text-danger">Log Out</button>
+            <button onClick={() => setShowDeleteModal(true)} className="dropdown-item" style={{ color: '#ef4444', textAlign: 'left', width: '100%', border: 'none', background: 'none', fontWeight: '500' }}>Delete Account</button>
+            <button onClick={handleLogout} className="dropdown-item text-danger" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>Log Out</button>
           </div>
         </div>
       </div>
+
+      {/* Account Deletion Overlay Modal Layer */}
+      {showDeleteModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#18181b', border: '1px solid #ef4444', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '450px', color: '#fff' }}>
+            <h3 style={{ color: '#ef4444', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚠️ Danger Zone: Delete Account
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#a1a1aa', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+              This action is permanent. All your skill graphs, active projects, tracking metrics, and invitations will be erased completely.
+            </p>
+            
+            <form onSubmit={handleDeleteAccountSubmit}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: '#e4e4e7' }}>
+                Type your registered Gmail address to confirm:
+              </label>
+              <input 
+                type="email" 
+                placeholder="name@gmail.com"
+                value={confirmEmail}
+                onChange={e => setConfirmEmail(e.target.value)}
+                required
+                style={{ width: '100%', padding: '0.75rem', background: '#09090b', border: '1px solid #27272a', borderRadius: '6px', color: '#fff', marginBottom: '1rem', outline: 'none' }}
+              />
+              
+              {deleteError && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>{deleteError}</p>}
+              
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn-secondary" onClick={() => { setShowDeleteModal(false); setConfirmEmail(''); setDeleteError(''); }} disabled={deleteLoading} style={{ padding: '0.5rem 1rem', borderRadius: '6px', background: '#27272a', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={deleteLoading} style={{ padding: '0.5rem 1rem', borderRadius: '6px', background: deleteLoading ? '#71717a' : '#ef4444', color: '#fff', border: 'none', fontWeight: 'bold', cursor: deleteLoading ? 'not-allowed' : 'pointer' }}>
+                  {deleteLoading ? 'Processing...' : 'Permanently Delete'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

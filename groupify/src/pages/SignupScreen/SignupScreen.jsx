@@ -40,7 +40,7 @@ export default function SignupScreen() {
     try {
       const user = await loginWithGoogle(response.credential);
       if (!user.skills?.technical?.length) {
-        navigate('/onboarding', { replace: true });
+        navigate('/onboarding', { replace: true, state: { isNewUser: true } });
       } else {
         navigate('/dashboard', { replace: true });
       }
@@ -77,7 +77,7 @@ export default function SignupScreen() {
     try {
       await verifyOtp(email, otp);
       // OTP verify hone ke baad Token milega aur Onboarding pe jayenge
-      navigate('/onboarding', { replace: true });
+      navigate('/onboarding', { replace: true, state: { isNewUser: true } });
     } catch (err) {
       setError(err.message || 'Invalid OTP. Please try again.');
     } finally {

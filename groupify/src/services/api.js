@@ -103,3 +103,10 @@ export async function sendTeamInvitation(projectId, userId) {
     }) 
   });
 }
+
+// Permanent account deletion handler
+export async function deleteUserAccount(emailConfirmation) {
+  return request(`/api/profile/delete-account?email_confirmation=${encodeURIComponent(emailConfirmation)}`, {
+    method: 'DELETE'
+  });
+}

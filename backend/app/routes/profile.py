@@ -208,3 +208,51 @@ async def update_profile(
         created_at=updated_user.get("created_at", datetime.now(timezone.utc)),
         updated_at=updated_user.get("updated_at", datetime.now(timezone.utc)),
     )
+
+# ---------------------------------------------------------------------------
+# DELETE /api/profile/delete-account
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/delete-account",
+    summary="Permanently delete user account and clean up database documents",
+)
+async def delete_account(
+    email_confirmation: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Permanently purges a user's account from the database if the provided 
+    confirmation email matches their registration email. Cleans up project members.
+    """
+    db = get_database()
+    
+    # 1. Fetch user to verify email identity
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found.",
+        )
+        
+    if user["email"].lower() != email_confirmation.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email mismatch! Please enter your correct registered Gmail address.",
+        )
+
+    # 2. Project membership cleanups (Pull user out of all active teams)
+    await db.projects.update_many(
+        {"members.user_id": user_id},
+        {"$pull": {"members": {"user_id": user_id}}}
+    )
+    
+    # 3. Clean up invitations linked with this user
+    await db.invites.delete_many(
+        {"$or": [{"sender_id": user_id}, {"receiver_id": user_id}]}
+    )
+    
+    # 4. Final step: Purge the user from the collection
+    await db.users.delete_one({"_id": ObjectId(user_id)})
+    
+    return {"message": "Account has been permanently deleted from Groupify."}
