@@ -6,8 +6,7 @@ GET  /api/chats/{user_id}   — Get message history with a specific user.
 POST /api/chats/{user_id}   — Send a direct message to a user.
 """
 
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -106,12 +105,15 @@ async def send_team_message(project_id: str, body: ChatMessageCreate, user_id: s
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid ID")
         
+    # Seedha 5 ghante 30 minute add kar diye UTC me
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        
     msg_doc = {
         "sender_id": uid,
         "receiver_id": pid,
         "is_team_chat": True,
         "content": body.content,
-        "created_at": datetime.now(ZoneInfo("Asia/Kolkata"))
+        "created_at": ist_time
     }
     
     res = await db.chat_messages.insert_one(msg_doc)
@@ -171,12 +173,15 @@ async def send_message(other_user_id: str, body: ChatMessageCreate, user_id: str
     if not recipient:
         raise HTTPException(status_code=404, detail="Recipient not found")
         
+    # Seedha 5 ghante 30 minute add kar diye UTC me
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        
     msg_doc = {
         "sender_id": uid,
         "receiver_id": ouid,
         "is_team_chat": False,
         "content": body.content,
-        "created_at": datetime.now(ZoneInfo("Asia/Kolkata"))
+        "created_at": ist_time
     }
     
     res = await db.chat_messages.insert_one(msg_doc)
