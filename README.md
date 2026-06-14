@@ -340,12 +340,3 @@ npm run build
 
 ---
 
-## Team
-
-Built by **Manas Nigam** for the **Google Cloud Rapid Agent Hackathon** (MongoDB Track)
-
----
-
-## License
-
-MIT
